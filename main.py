@@ -39,7 +39,7 @@ async def on_message_create(ctx):
         if ctx.message.author.voice:
             if connected:
                 command_queue.append(sound_url)
-                ctx.message.channel.send("Seu som foi adicionado à fila.")
+                await ctx.message.channel.send("Seu som foi adicionado à fila.")
             else:
                 voice_state = await ctx.message.author.voice.channel.connect()
                 connected = True
@@ -49,6 +49,7 @@ async def on_message_create(ctx):
                         await voice_state.play(AudioVolume(command))
                     command_queue.clear()
                 await voice_state.disconnect()
+                connected = False
         else:
             await ctx.message.channel.send(
                 "Você precisa estar em um canal de voz para reproduzir sons."
@@ -57,23 +58,23 @@ async def on_message_create(ctx):
 
 @slash_command(name="add_sound", description="Adiciona um som ao bot.")
 @slash_option(
-    name="name",
+    name="key",
     description="Palavra chave para o som.",
     opt_type=OptionType.STRING,
     required=True,
 )
 @slash_option(
-    name="file",
+    name="sound",
     description="Arquivo de som",
     opt_type=OptionType.ATTACHMENT,
     required=True,
 )
-async def add_sound(ctx: SlashContext, name: str, sound: Attachment):
-    if sound_wrapper.get(name.lower()):
+async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
+    if sound_wrapper.get(key.lower()):
         await ctx.send("Esse som já existe.")
         return
     else:
-        sound_wrapper[name.lower()] = sound.url
+        sound_wrapper[key.lower()] = sound.url
         with open("sounds.json", "w") as file:
             json.dump(sound_wrapper, file)
         await ctx.send("Som adicionado com sucesso.")
