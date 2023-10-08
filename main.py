@@ -33,7 +33,6 @@ async def on_message_create(ctx):
 
     sound_url = sound_wrapper.get(ctx.message.content.lower())
     global connected
-    
 
     if sound_url:
         if ctx.message.author.voice:
@@ -78,6 +77,12 @@ async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
         with open("sounds.json", "w") as file:
             json.dump(sound_wrapper, file)
         await ctx.send("Som adicionado com sucesso.")
+
+
+@slash_command(name="list_sounds", description="Lista todos os sons disponíveis.")
+async def list_sounds(ctx: SlashContext):
+    sounds = "\n".join(sound_wrapper.keys())
+    await ctx.send(f"Os sons disponíveis são:\n{sounds}")
 
 
 if __name__ == "__main__":
