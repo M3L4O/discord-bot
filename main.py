@@ -1,6 +1,9 @@
 import json
 
 from interactions import (
+    ActionRow,
+    Button,
+    ButtonStyle,
     Attachment,
     Client,
     Intents,
@@ -11,6 +14,7 @@ from interactions import (
     slash_option,
 )
 from interactions.api.voice.audio import AudioVolume
+from interactions.api.events import Component
 
 bot: Client = Client(intents=Intents.ALL)
 sound_wrapper: dict = {}
@@ -70,13 +74,29 @@ async def on_message_create(ctx):
 )
 async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
     if sound_wrapper.get(key.lower()):
-        await ctx.send("Esse som já existe.")
-        return
-    else:
-        sound_wrapper[key.lower()] = sound.url
-        with open("sounds.json", "w") as file:
-            json.dump(sound_wrapper, file)
-        await ctx.send("Som adicionado com sucesso.")
+        layout: list[ActionRow] = [
+            ActionRow(
+                Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
+                Button(label="Não", style=ButtonStyle.DANGER, custom_id="no"),
+            )
+        ]
+        message = await ctx.send(
+            "Esse som já existe. Deseja sobreescrever?", components=layout
+        )
+        response: Component = await bot.wait_for_component(
+            messages=message, components=layout
+        )
+        if response.ctx.custom_id == "no":
+            await message.edit(content="Operação cancelada.", components=[])
+            return
+        else:
+            await message.edit(content="Sobreescrevendo...", components=[])
+            ctx = response.ctx
+
+    sound_wrapper[key.lower()] = sound.url
+    with open("sounds.json", "w") as file:
+        json.dump(sound_wrapper, file)
+    await ctx.send("Som adicionado com sucesso.")
 
 
 @slash_command(name="list_sounds", description="Lista todos os sons disponíveis.")
