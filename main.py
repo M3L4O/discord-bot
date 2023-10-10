@@ -60,6 +60,7 @@ async def on_message_create(event: MessageCreate):
 )
 async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
     if sound_wrapper.get(key.lower()):
+        ctx.defer()
         layout: list[ActionRow] = [
             ActionRow(
                 Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -139,11 +140,12 @@ async def soundboard(ctx: SlashContext):
         ],
         count_per_row=4,
     )
-    await ctx.send("Escolha um som:", components=layout, ephemeral=True)
+    await ctx.send("Escolha um som:", components=layout)
 
 
 @component_callback(pattern)
 async def soundboard_callback(ctx: Component):
+    await ctx.defer(edit_origin=True)
     await play_sound(ctx, sound_wrapper[ctx.custom_id[7:]])
 
 
