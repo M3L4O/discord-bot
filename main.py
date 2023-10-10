@@ -100,6 +100,7 @@ async def list_sounds(ctx: SlashContext):
     required=True,
 )
 async def remove_sound(ctx: SlashContext, key: str):
+    ctx.defer()
     if sound_wrapper.get(key.lower()):
         layout: list[ActionRow] = [
             ActionRow(
