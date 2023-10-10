@@ -1,25 +1,30 @@
 import json
+import re
 
 from interactions import (
     ActionRow,
+    Attachment,
     Button,
     ButtonStyle,
-    Attachment,
     Client,
+    ComponentContext,
     Intents,
+    Message,
     OptionType,
     SlashContext,
+    component_callback,
     listen,
     slash_command,
     slash_option,
 )
+from interactions.api.events import Component, MessageCreate
 from interactions.api.voice.audio import AudioVolume
-from interactions.api.events import Component
 
 bot: Client = Client(intents=Intents.ALL)
 sound_wrapper: dict = {}
 command_queue: list = []
 connected = False
+pattern = re.compile(r"button_*")
 
 
 @listen()
@@ -31,32 +36,13 @@ async def on_ready():
 
 
 @listen()
-async def on_message_create(ctx):
-    if ctx.message.author == bot.user:
+async def on_message_create(event: MessageCreate):
+    if event.message.author == bot.user:
         return
 
-    sound_url = sound_wrapper.get(ctx.message.content.lower())
-    global connected
+    sound_url = sound_wrapper.get(event.message.content.lower())
 
-    if sound_url:
-        if ctx.message.author.voice:
-            if connected:
-                command_queue.append(sound_url)
-                await ctx.message.channel.send("Seu som foi adicionado à fila.")
-            else:
-                voice_state = await ctx.message.author.voice.channel.connect()
-                connected = True
-                await voice_state.play(AudioVolume(sound_url))
-                if command_queue:
-                    for command in command_queue:
-                        await voice_state.play(AudioVolume(command))
-                    command_queue.clear()
-                await voice_state.disconnect()
-                connected = False
-        else:
-            await ctx.message.channel.send(
-                "Você precisa estar em um canal de voz para reproduzir sons."
-            )
+    await play_sound(event, sound_url)
 
 
 @slash_command(name="add_sound", description="Adiciona um som ao bot.")
@@ -80,7 +66,7 @@ async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
                 Button(label="Não", style=ButtonStyle.DANGER, custom_id="no"),
             )
         ]
-        message = await ctx.send(
+        message: Message = await ctx.send(
             "Esse som já existe. Deseja sobreescrever?", components=layout
         )
         response: Component = await bot.wait_for_component(
@@ -103,6 +89,104 @@ async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
 async def list_sounds(ctx: SlashContext):
     sounds = "\n".join(sound_wrapper.keys())
     await ctx.send(f"Os sons disponíveis são:\n{sounds}")
+
+
+@slash_command(name="remove_sound", description="Remove um som do bot.")
+@slash_option(
+    name="key",
+    description="Palavra chave para o som.",
+    opt_type=OptionType.STRING,
+    required=True,
+)
+async def remove_sound(ctx: SlashContext, key: str):
+    if sound_wrapper.get(key.lower()):
+        layout: list[ActionRow] = [
+            ActionRow(
+                Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
+                Button(label="Não", style=ButtonStyle.DANGER, custom_id="no"),
+            )
+        ]
+        message: Message = await ctx.send(
+            "Tem certeza que deseja remover esse som?", components=layout
+        )
+        response: Component = await bot.wait_for_component(
+            messages=message, components=layout
+        )
+        if response.ctx.custom_id == "no":
+            await message.edit(content="Operação cancelada.", components=[])
+            return
+        else:
+            await message.edit(content="Removendo...", components=[])
+            ctx = response.ctx
+
+    sound_wrapper.pop(key.lower())
+    with open("sounds.json", "w") as file:
+        json.dump(sound_wrapper, file)
+    await ctx.send("Som removido com sucesso.")
+
+
+@slash_command(name="soundboard", description="Abre uma soundboard.")
+async def soundboard(ctx: SlashContext):
+    layout: list[ActionRow] = []
+    keys: list[str] = list(sound_wrapper.keys())
+    rows = (len(keys) / 3).__ceil__()
+    for row in range(rows):
+        layout.append(
+            ActionRow(
+                *[
+                    Button(
+                        label=keys[3 * row + i],
+                        style=ButtonStyle.PRIMARY,
+                        custom_id=f"button_{keys[3 * row+i]}",
+                    )
+                    if len(keys) > 3 * row + i
+                    else Button(
+                        label="Vazio",
+                        style=ButtonStyle.GREY,
+                        disabled=True,
+                    )
+                    for i in range(3)
+                ]
+            )
+        )
+    await ctx.send("Escolha um som:", components=layout)
+
+
+@component_callback(pattern)
+async def soundboard_callback(ctx: Component):
+    await play_sound(ctx, sound_wrapper[ctx.custom_id[7:]])
+
+
+async def play_sound(ctx: MessageCreate | ComponentContext, sound_url: str):
+    author, channel = (
+        (ctx.author, ctx.channel)
+        if type(ctx) is ComponentContext
+        else (ctx.message.author, ctx.message.channel)
+    )
+
+    if author == bot.user:
+        return
+
+    if sound_url:
+        if author.voice:
+            global connected
+            if connected:
+                command_queue.append(sound_url)
+                await channel.send("Seu som foi adicionado à fila.")
+            else:
+                voice_state = await author.voice.channel.connect()
+                connected = True
+                await voice_state.play(AudioVolume(sound_url))
+                if command_queue:
+                    for command in command_queue:
+                        await voice_state.play(AudioVolume(command))
+                    command_queue.clear()
+                await voice_state.disconnect()
+                connected = False
+        else:
+            await channel.send(
+                "Você precisa estar em um canal de voz para reproduzir sons."
+            )
 
 
 if __name__ == "__main__":
