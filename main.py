@@ -127,29 +127,19 @@ async def remove_sound(ctx: SlashContext, key: str):
 
 @slash_command(name="soundboard", description="Abre uma soundboard.")
 async def soundboard(ctx: SlashContext):
-    layout: list[ActionRow] = []
     keys: list[str] = list(sound_wrapper.keys())
-    rows = (len(keys) / 3).__ceil__()
-    for row in range(rows):
-        layout.append(
-            ActionRow(
-                *[
-                    Button(
-                        label=keys[3 * row + i],
-                        style=ButtonStyle.PRIMARY,
-                        custom_id=f"button_{keys[3 * row+i]}",
-                    )
-                    if len(keys) > 3 * row + i
-                    else Button(
-                        label="Vazio",
-                        style=ButtonStyle.GREY,
-                        disabled=True,
-                    )
-                    for i in range(3)
-                ]
+    layout: list[ActionRow] = ActionRow.split_components(
+        *[
+            Button(
+                label=keys[i],
+                style=ButtonStyle.PRIMARY,
+                custom_id=f"button_{keys[i]}",
             )
-        )
-    await ctx.send("Escolha um som:", components=layout)
+            for i in range(len(keys))
+        ],
+        count_per_row=4,
+    )
+    await ctx.send("Escolha um som:", components=layout, ephemeral=True)
 
 
 @component_callback(pattern)
