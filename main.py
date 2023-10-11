@@ -39,6 +39,11 @@ async def on_ready():
 async def on_message_create(event: MessageCreate):
     if event.message.author == bot.user:
         return
+    if (
+        event.message.author == "@__melux__"
+        and event.message.content == "Bo um terraria"
+    ):
+        await event.message.channel.send("Tô logando aqui, meu criador.")
 
     sound_url = sound_wrapper.get(event.message.content.lower())
 
