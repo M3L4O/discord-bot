@@ -60,7 +60,6 @@ async def on_message_create(event: MessageCreate):
 )
 async def add_sound(ctx: SlashContext, key: str, sound: Attachment):
     if sound_wrapper.get(key.lower()):
-        ctx.defer()
         layout: list[ActionRow] = [
             ActionRow(
                 Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -100,7 +99,6 @@ async def list_sounds(ctx: SlashContext):
     required=True,
 )
 async def remove_sound(ctx: SlashContext, key: str):
-    ctx.defer()
     if sound_wrapper.get(key.lower()):
         layout: list[ActionRow] = [
             ActionRow(
