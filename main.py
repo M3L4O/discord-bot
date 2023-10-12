@@ -17,7 +17,7 @@ from interactions import (
     slash_command,
     slash_option,
 )
-from interactions.api.events import Component, MessageCreate
+from interactions.api.events import Component, MessageCreate, VoiceUserLeave
 from interactions.api.voice.audio import AudioVolume
 
 bot: Client = Client(intents=Intents.ALL)
@@ -39,15 +39,16 @@ async def on_ready():
 async def on_message_create(event: MessageCreate):
     if event.message.author == bot.user:
         return
-    if (
-        event.message.author == "@__melux__"
-        and event.message.content == "Bo um terraria"
-    ):
-        await event.message.channel.send("Tô logando aqui, meu criador.")
-
     sound_url = sound_wrapper.get(event.message.content.lower())
 
     await play_sound(event, sound_url)
+
+
+@listen()
+async def on_voice_user_leave(event: VoiceUserLeave):
+    if event.user == bot.user:
+        global connected
+        connected = False
 
 
 @slash_command(name="add_sound", description="Adiciona um som ao bot.")
