@@ -51,14 +51,14 @@ async def on_message_create(event: MessageCreate):
 
 @listen()
 async def on_voice_user_join(event: VoiceUserJoin):
-    if event.user == bot.user:
+    if event.author == bot.user:
         global connected
         connected = True
 
 
 @listen()
 async def on_voice_user_leave(event: VoiceUserLeave):
-    if event.user == bot.user:
+    if event.author == bot.user:
         global connected
         connected = False
 
