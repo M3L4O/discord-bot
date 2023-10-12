@@ -17,7 +17,12 @@ from interactions import (
     slash_command,
     slash_option,
 )
-from interactions.api.events import Component, MessageCreate, VoiceUserLeave
+from interactions.api.events import (
+    Component,
+    MessageCreate,
+    VoiceUserJoin,
+    VoiceUserLeave,
+)
 from interactions.api.voice.audio import AudioVolume
 
 bot: Client = Client(intents=Intents.ALL)
@@ -42,6 +47,13 @@ async def on_message_create(event: MessageCreate):
     sound_url = sound_wrapper.get(event.message.content.lower())
 
     await play_sound(event, sound_url)
+
+
+@listen()
+async def on_voice_user_join(event: VoiceUserJoin):
+    if event.user == bot.user:
+        global connected
+        connected = True
 
 
 @listen()
@@ -166,20 +178,17 @@ async def play_sound(ctx: MessageCreate | ComponentContext, sound_url: str):
 
     if sound_url:
         if author.voice:
-            global connected
             if connected:
                 command_queue.append(sound_url)
                 await channel.send("Seu som foi adicionado à fila.")
             else:
                 voice_state = await author.voice.channel.connect()
-                connected = True
                 await voice_state.play(AudioVolume(sound_url))
                 if command_queue:
                     for command in command_queue:
                         await voice_state.play(AudioVolume(command))
                     command_queue.clear()
                 await voice_state.disconnect()
-                connected = False
         else:
             await channel.send(
                 "Você precisa estar em um canal de voz para reproduzir sons."
