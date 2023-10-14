@@ -180,7 +180,7 @@ async def play_sound(ctx: MessageCreate | ComponentContext, sound_url: str):
         if author.voice:
             if connected:
                 command_queue.append(sound_url)
-                await channel.send("Seu som foi adicionado à fila.")
+                await channel.send(f"Seu som foi adicionado à fila, {author.mention}.")
             else:
                 voice_state = await author.voice.channel.connect()
                 await voice_state.play(AudioVolume(sound_url))
