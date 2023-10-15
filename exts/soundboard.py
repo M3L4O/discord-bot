@@ -91,7 +91,7 @@ class Soundboard(Extension):
                 ctx = response.ctx
 
         sound_wrapper[key.lower()] = sound.url
-        with open("../sounds.json", "w") as file:
+        with open("sounds.json", "w") as file:
             json.dump(sound_wrapper, file)
         await ctx.send("Som adicionado com sucesso.")
 
@@ -129,7 +129,7 @@ class Soundboard(Extension):
                 ctx = response.ctx
 
         sound_wrapper.pop(key.lower())
-        with open("../sounds.json", "w") as file:
+        with open("sounds.json", "w") as file:
             json.dump(sound_wrapper, file)
         await ctx.send("Som removido com sucesso.")
 
