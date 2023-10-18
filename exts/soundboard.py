@@ -2,6 +2,7 @@ import json
 import re
 
 from interactions import (
+    Client,
     ActionRow,
     Attachment,
     Button,
@@ -32,17 +33,20 @@ class Soundboard(Extension):
     pattern = re.compile(r"button_*")
 
     @listen()
-    async def on_ready(self):
-        with open("sounds.json", "r") as file:
-            global sound_wrapper
-            sound_wrapper = json.load(file)
+    async def on_startup(self):
         print(f"{self.bot.user} está no ar!")
+        try:
+            with open("sounds.json", "r") as sounds:
+                self.sound_wrapper = json.load(sounds)
+        except FileNotFoundError:
+            with open("sounds.json", "w") as sounds:
+                json.dump({}, sounds)
 
     @listen()
     async def on_message_create(self, event: MessageCreate):
         if event.message.author == self.bot.user:
             return
-        sound_url = sound_wrapper.get(event.message.content.lower())
+        sound_url = self.sound_wrapper.get(event.message.content.lower())
 
         await self.play_sound(event, sound_url)
 
@@ -70,7 +74,7 @@ class Soundboard(Extension):
         required=True,
     )
     async def add_sound(self, ctx: SlashContext, key: str, sound: Attachment):
-        if sound_wrapper.get(key.lower()):
+        if self.sound_wrapper.get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
                     Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -90,14 +94,14 @@ class Soundboard(Extension):
                 await message.edit(content="Sobreescrevendo...", components=[])
                 ctx = response.ctx
 
-        sound_wrapper[key.lower()] = sound.url
+        self.sound_wrapper[key.lower()] = sound.url
         with open("sounds.json", "w") as file:
-            json.dump(sound_wrapper, file)
+            json.dump(self.sound_wrapper, file)
         await ctx.send("Som adicionado com sucesso.")
 
     @slash_command(name="list_sounds", description="Lista todos os sons disponíveis.")
     async def list_sounds(self, ctx: SlashContext):
-        sounds = "\n".join(sound_wrapper.keys())
+        sounds = "\n".join(self.sound_wrapper.keys())
         await ctx.send(f"Os sons disponíveis são:\n{sounds}")
 
     @slash_command(name="remove_sound", description="Remove um som do self.bot.")
@@ -108,7 +112,7 @@ class Soundboard(Extension):
         required=True,
     )
     async def remove_sound(self, ctx: SlashContext, key: str):
-        if sound_wrapper.get(key.lower()):
+        if self.sound_wrapper.get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
                     Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -128,14 +132,14 @@ class Soundboard(Extension):
                 await message.edit(content="Removendo...", components=[])
                 ctx = response.ctx
 
-        sound_wrapper.pop(key.lower())
+        self.sound_wrapper.pop(key.lower())
         with open("sounds.json", "w") as file:
-            json.dump(sound_wrapper, file)
+            json.dump(self.sound_wrapper, file)
         await ctx.send("Som removido com sucesso.")
 
     @slash_command(name="soundboard", description="Abre uma soundboard.")
     async def soundboard(self, ctx: SlashContext):
-        keys: list[str] = list(sound_wrapper.keys())
+        keys: list[str] = list(self.sound_wrapper.keys())
         layout: list[ActionRow] = ActionRow.split_components(
             *[
                 Button(
@@ -152,7 +156,7 @@ class Soundboard(Extension):
     @component_callback(pattern)
     async def soundboard_callback(self, ctx: Component):
         await ctx.defer(edit_origin=True)
-        await self.play_sound(ctx, sound_wrapper[ctx.custom_id[7:]])
+        await self.play_sound(ctx, self.sound_wrapper[ctx.custom_id[7:]])
 
     async def play_sound(self, ctx: MessageCreate | ComponentContext, sound_url: str):
         author, channel = (
