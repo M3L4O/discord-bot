@@ -30,8 +30,9 @@ class NSFWCleaner(Extension):
             with open("nsfw.json", "w") as nsfw:
                 json.dump({"users": [], "channels": []}, nsfw)
 
-    @Task.create(IntervalTrigger(hours=6))
+    @Task.create(IntervalTrigger(seconds=6))
     async def clean_nsfw(self):
+        print("Limpando o NSFW...")
         for channel_id in self.channels_ids:
             channel = self.bot.get_channel(channel_id)
             await channel.purge(

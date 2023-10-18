@@ -2,7 +2,6 @@ import json
 import re
 
 from interactions import (
-    Client,
     ActionRow,
     Attachment,
     Button,
