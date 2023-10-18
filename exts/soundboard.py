@@ -32,7 +32,7 @@ class Soundboard(Extension):
     pattern = re.compile(r"button_*")
 
     @listen()
-    async def on_startup(self):
+    async def on_ready(self):
         print(f"{self.bot.user} está no ar!")
         try:
             with open("sounds.json", "r") as sounds:

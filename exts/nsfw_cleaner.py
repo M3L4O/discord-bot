@@ -16,7 +16,7 @@ from interactions import (
 
 class NSFWCleaner(Extension):
     @listen()
-    async def on_startup(self):
+    async def on_ready(self):
         self.clean_nsfw.start()
         try:
             with open("nsfw.json", "r") as nsfw:
