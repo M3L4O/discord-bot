@@ -153,7 +153,7 @@ class Soundboard(Extension):
                 Button(
                     label=keys[i],
                     style=ButtonStyle.PRIMARY,
-                    custom_id=f"button_{keys[i]}",
+                    custom_id=f"button_{keys[i]}_{ctx.guild_id}",
                 )
                 for i in range(len(keys))
             ],
@@ -163,9 +163,10 @@ class Soundboard(Extension):
 
     @component_callback(pattern)
     async def soundboard_callback(self, ctx: Component):
+        key, guild_id = ctx.custom_id[7:].split("_")
         await ctx.defer(edit_origin=True)
         await self.play_sound(
-            ctx, self.sound_wrapper.get(ctx.ctx.guild_id)[ctx.custom_id[7:]]
+            ctx, self.sound_wrapper.get(guild_id)[key]
         )
 
     async def play_sound(self, ctx: MessageCreate | ComponentContext, sound_url: str):
