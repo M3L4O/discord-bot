@@ -76,6 +76,7 @@ class Soundboard(Extension):
         guild_sounds = self.sound_wrapper.get(ctx.guild_id)
         if guild_sounds is None:
             self.sound_wrapper[ctx.guild_id] = {}
+            guild_sounds = self.sound_wrapper.get(ctx.guild_id)
         if guild_sounds.get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
