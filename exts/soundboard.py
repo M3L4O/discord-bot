@@ -73,7 +73,10 @@ class Soundboard(Extension):
         required=True,
     )
     async def add_sound(self, ctx: SlashContext, key: str, sound: Attachment):
-        if self.sound_wrapper.get(ctx.guild_id).get(key.lower()):
+        guild_sounds = self.sound_wrapper.get(ctx.guild_id)
+        if guild_sounds is None:
+            self.sound_wrapper[ctx.guild_id] = {}
+        if guild_sounds.get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
                     Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
