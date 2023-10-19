@@ -28,7 +28,7 @@ from interactions.api.voice.audio import AudioVolume
 class Soundboard(Extension):
     sound_wrapper: dict = {}
     command_queue: list = []
-    connected = False
+    connected: dict = {}
     pattern = re.compile(r"button_*")
 
     @listen()
@@ -52,12 +52,12 @@ class Soundboard(Extension):
     @listen()
     async def on_voice_user_join(self, event: VoiceUserJoin):
         if event.author == self.bot.user:
-            self.connected = True
+            self.connected[event.author.guild.id] = True
 
     @listen()
     async def on_voice_user_leave(self, event: VoiceUserLeave):
         if event.author == self.bot.user:
-            self.connected = False
+            self.connected[event.author.guild.id] = False
 
     @slash_command(name="add_sound", description="Adiciona um som ao self.bot.")
     @slash_option(
@@ -165,9 +165,7 @@ class Soundboard(Extension):
     async def soundboard_callback(self, ctx: Component):
         key, guild_id = ctx.custom_id[7:].split("_")
         await ctx.defer(edit_origin=True)
-        await self.play_sound(
-            ctx, self.sound_wrapper.get(guild_id)[key]
-        )
+        await self.play_sound(ctx, self.sound_wrapper.get(guild_id)[key])
 
     async def play_sound(self, ctx: MessageCreate | ComponentContext, sound_url: str):
         author, channel = (
@@ -175,13 +173,15 @@ class Soundboard(Extension):
             if type(ctx) is ComponentContext
             else (ctx.message.author, ctx.message.channel)
         )
+        if not self.connected.get(author.guild.id):
+            self.connected[author.guild.id] = False
 
         if author == self.bot.user:
             return
 
         if sound_url:
             if author.voice:
-                if self.connected:
+                if self.connected[author.guild.id]:
                     self.command_queue.append(sound_url)
                     await channel.send(
                         f"Seu som foi adicionado à fila, {author.mention}."
