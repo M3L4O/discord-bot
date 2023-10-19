@@ -73,7 +73,7 @@ class Soundboard(Extension):
         required=True,
     )
     async def add_sound(self, ctx: SlashContext, key: str, sound: Attachment):
-        if self.sound_wrapper.get(key.lower()):
+        if self.sound_wrapper.get(ctx.guild_id).get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
                     Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -93,7 +93,7 @@ class Soundboard(Extension):
                 await message.edit(content="Sobreescrevendo...", components=[])
                 ctx = response.ctx
 
-        self.sound_wrapper[key.lower()] = sound.url
+        self.sound_wrapper[ctx.guild_id][key.lower()] = sound.url
         with open("sounds.json", "w") as file:
             json.dump(self.sound_wrapper, file)
         await ctx.send("Som adicionado com sucesso.")
@@ -111,7 +111,7 @@ class Soundboard(Extension):
         required=True,
     )
     async def remove_sound(self, ctx: SlashContext, key: str):
-        if self.sound_wrapper.get(key.lower()):
+        if self.sound_wrapper.get(ctx.guild_id).get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
                     Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -131,14 +131,19 @@ class Soundboard(Extension):
                 await message.edit(content="Removendo...", components=[])
                 ctx = response.ctx
 
-        self.sound_wrapper.pop(key.lower())
+        self.sound_wrapper.get(ctx.guild_id).pop(key.lower())
         with open("sounds.json", "w") as file:
             json.dump(self.sound_wrapper, file)
         await ctx.send("Som removido com sucesso.")
 
     @slash_command(name="soundboard", description="Abre uma soundboard.")
     async def soundboard(self, ctx: SlashContext):
-        keys: list[str] = list(self.sound_wrapper.keys())
+        guild_sounds = self.sound_wrapper.get(ctx.guild_id)
+        if not guild_sounds:
+            await ctx.send("Não há sons disponíveis.")
+            return
+
+        keys: list[str] = list(guild_sounds.keys())
         layout: list[ActionRow] = ActionRow.split_components(
             *[
                 Button(
@@ -148,14 +153,16 @@ class Soundboard(Extension):
                 )
                 for i in range(len(keys))
             ],
-            count_per_row=4,
+            count_per_row=3,
         )
         await ctx.send("Escolha um som:", components=layout)
 
     @component_callback(pattern)
     async def soundboard_callback(self, ctx: Component):
         await ctx.defer(edit_origin=True)
-        await self.play_sound(ctx, self.sound_wrapper[ctx.custom_id[7:]])
+        await self.play_sound(
+            ctx, self.sound_wrapper.get(ctx.ctx.guild_id)[ctx.custom_id[7:]]
+        )
 
     async def play_sound(self, ctx: MessageCreate | ComponentContext, sound_url: str):
         author, channel = (
