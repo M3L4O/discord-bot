@@ -37,6 +37,7 @@ class Soundboard(Extension):
         try:
             with open("sounds.json", "r") as sounds:
                 self.sound_wrapper = json.load(sounds)
+                print(self.sound_wrapper)
         except FileNotFoundError:
             with open("sounds.json", "w") as sounds:
                 json.dump({}, sounds)
@@ -52,12 +53,12 @@ class Soundboard(Extension):
     @listen()
     async def on_voice_user_join(self, event: VoiceUserJoin):
         if event.author == self.bot.user:
-            self.connected[event.author.guild.id] = True
+            self.connected[event.author.guild.id.__str__()] = True
 
     @listen()
     async def on_voice_user_leave(self, event: VoiceUserLeave):
         if event.author == self.bot.user:
-            self.connected[event.author.guild.id] = False
+            self.connected[event.author.guild.id.__str__()] = False
 
     @slash_command(name="add_sound", description="Adiciona um som ao self.bot.")
     @slash_option(
@@ -73,10 +74,11 @@ class Soundboard(Extension):
         required=True,
     )
     async def add_sound(self, ctx: SlashContext, key: str, sound: Attachment):
-        guild_sounds = self.sound_wrapper.get(ctx.guild_id)
+        guild_id = str(ctx.guild_id)
+        guild_sounds = self.sound_wrapper.get(guild_id)
         if guild_sounds is None:
-            self.sound_wrapper[ctx.guild_id] = {}
-            guild_sounds = self.sound_wrapper.get(ctx.guild_id)
+            self.sound_wrapper[guild_id] = {}
+            guild_sounds = self.sound_wrapper.get(guild_id)
         if guild_sounds.get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
@@ -97,7 +99,8 @@ class Soundboard(Extension):
                 await message.edit(content="Sobreescrevendo...", components=[])
                 ctx = response.ctx
 
-        self.sound_wrapper[ctx.guild_id][key.lower()] = sound.url
+        self.sound_wrapper[guild_id][key.lower()] = sound.url
+        print(self.sound_wrapper)
         with open("sounds.json", "w") as file:
             json.dump(self.sound_wrapper, file)
         await ctx.send("Som adicionado com sucesso.")
@@ -115,7 +118,8 @@ class Soundboard(Extension):
         required=True,
     )
     async def remove_sound(self, ctx: SlashContext, key: str):
-        if self.sound_wrapper.get(ctx.guild_id).get(key.lower()):
+        guild_id = str(ctx.guild_id)
+        if self.sound_wrapper.get(guild_id).get(key.lower()):
             layout: list[ActionRow] = [
                 ActionRow(
                     Button(label="Sim", style=ButtonStyle.SUCCESS, custom_id="yes"),
@@ -135,14 +139,15 @@ class Soundboard(Extension):
                 await message.edit(content="Removendo...", components=[])
                 ctx = response.ctx
 
-        self.sound_wrapper.get(ctx.guild_id).pop(key.lower())
+        self.sound_wrapper.get(guild_id).pop(key.lower())
         with open("sounds.json", "w") as file:
             json.dump(self.sound_wrapper, file)
         await ctx.send("Som removido com sucesso.")
 
     @slash_command(name="soundboard", description="Abre uma soundboard.")
     async def soundboard(self, ctx: SlashContext):
-        guild_sounds = self.sound_wrapper.get(ctx.guild_id)
+        guild_id = str(ctx.guild_id)
+        guild_sounds = self.sound_wrapper.get(guild_id)
         if not guild_sounds:
             await ctx.send("Não há sons disponíveis.")
             return
@@ -153,7 +158,7 @@ class Soundboard(Extension):
                 Button(
                     label=keys[i],
                     style=ButtonStyle.PRIMARY,
-                    custom_id=f"button_{keys[i]}_{ctx.guild_id}",
+                    custom_id=f"button_{keys[i]}_{guild_id}",
                 )
                 for i in range(len(keys))
             ],
@@ -163,7 +168,7 @@ class Soundboard(Extension):
 
     @component_callback(pattern)
     async def soundboard_callback(self, ctx: Component):
-        key, guild_id = ctx.custom_id[7:].split("_")
+        _, key, guild_id = ctx.custom_id.split("_")
         await ctx.defer(edit_origin=True)
         await self.play_sound(ctx, self.sound_wrapper.get(guild_id)[key])
 
@@ -173,15 +178,16 @@ class Soundboard(Extension):
             if type(ctx) is ComponentContext
             else (ctx.message.author, ctx.message.channel)
         )
-        if not self.connected.get(author.guild.id):
-            self.connected[author.guild.id] = False
+        guild_id = str(author.guild.id)
+        if not self.connected.get(guild_id):
+            self.connected[guild_id] = False
 
         if author == self.bot.user:
             return
 
         if sound_url:
             if author.voice:
-                if self.connected[author.guild.id]:
+                if self.connected[guild_id]:
                     self.command_queue.append(sound_url)
                     await channel.send(
                         f"Seu som foi adicionado à fila, {author.mention}."
