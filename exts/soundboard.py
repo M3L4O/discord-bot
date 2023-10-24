@@ -46,19 +46,20 @@ class Soundboard(Extension):
     async def on_message_create(self, event: MessageCreate):
         if event.message.author == self.bot.user:
             return
-        sound_url = self.sound_wrapper.get(event.message.content.lower())
-
-        await self.play_sound(event, sound_url)
+        guild_id = str(event.message.author.guild.id)
+        guild_sounds = self.sound_wrapper.get(guild_id)
+        if guild_sounds:
+            await self.play_sound(event, guild_sounds[event.message.content.lower()])
 
     @listen()
     async def on_voice_user_join(self, event: VoiceUserJoin):
         if event.author == self.bot.user:
-            self.connected[event.author.guild.id.__str__()] = True
+            self.connected[str(event.author.guild.id)] = True
 
     @listen()
     async def on_voice_user_leave(self, event: VoiceUserLeave):
         if event.author == self.bot.user:
-            self.connected[event.author.guild.id.__str__()] = False
+            self.connected[str(event.author.guild.id)] = False
 
     @slash_command(name="add_sound", description="Adiciona um som ao self.bot.")
     @slash_option(
